@@ -1,0 +1,151 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1f4d3a"><link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png"><title>Mi Feria Navideña</title>
+<style>
+:root{--g:#1f4d3a;--r:#b3263a;--c:#f7f3ea;--ink:#23302a;--l:#e2d9c6}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font:17px/1.35 system-ui,sans-serif;background:var(--c);color:var(--ink);padding-bottom:160px}
+header{background:var(--g);color:#fff;padding:12px 16px;position:sticky;top:0;z-index:5}
+header h1{margin:0;font-size:20px}header small{color:#cfe3d7}
+main{padding:12px;max-width:640px;margin:auto}
+h2,h3{margin:0 0 4px}
+.card{background:#fff;border:1px solid var(--l);border-radius:16px;padding:14px;margin-bottom:10px}
+.row{display:flex;align-items:center;gap:12px}.grow{flex:1;min-width:0}
+small{display:block;color:#66716b;font-size:14px}
+.chk{width:48px;height:48px;flex:none;border-radius:14px;border:2px solid var(--g);background:#fff;color:#fff;font-size:26px}.chk.on{background:var(--g)}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#fff;border-top:1px solid var(--l);padding-bottom:env(safe-area-inset-bottom);z-index:6}
+nav button{flex:1;padding:12px 0;font-size:15px;background:none;border:0;color:#66716b}nav button.on{color:var(--r);font-weight:700}
+.fab{position:fixed;right:16px;bottom:calc(76px + env(safe-area-inset-bottom));background:var(--r);color:#fff;border:0;border-radius:30px;min-height:56px;padding:0 24px;font-size:18px;font-weight:700;box-shadow:0 3px 10px #0004;z-index:6}
+.btn{display:block;width:100%;min-height:52px;line-height:52px;border-radius:14px;border:0;background:var(--g);color:#fff;font-size:17px;font-weight:600;padding:0 18px;text-align:center;text-decoration:none;margin-top:8px}
+.btn.g{background:#e8eee8;color:var(--g)}.btn.r{background:#fbe5e8;color:var(--r)}
+.back{background:none;border:0;font-size:18px;color:var(--g);font-weight:600;padding:8px 0 12px}
+input,select,textarea{width:100%;font:inherit;padding:12px;border:1px solid #cfc7b4;border-radius:12px;background:#fff;margin:4px 0 10px}
+label{display:block;font-size:14px;color:#55605a}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#sh{display:none;position:fixed;inset:0;background:#0007;z-index:20;align-items:flex-end}#sh.on{display:flex}
+.box{background:var(--c);width:100%;max-width:640px;margin:auto;max-height:92vh;overflow:auto;border-radius:22px 22px 0 0;padding:16px}
+.hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.x{width:44px;height:44px;border:0;border-radius:12px;background:#e8eee8;font-size:20px}
+.th{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.th img{width:72px;height:72px;object-fit:cover;border-radius:10px;display:block}
+.th>div{position:relative}.xb{position:absolute;top:-6px;right:-6px;width:28px;height:28px;border-radius:50%;border:0;background:var(--r);color:#fff}
+.unit{background:#f1ead5;border-radius:12px;padding:10px;margin-bottom:10px;font-weight:600}
+.cr{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--l)}
+.best{background:#eaf5ea;margin:0 -14px;padding:10px 14px}
+.pr{font-weight:700;font-size:20px;text-align:right;white-space:nowrap}
+.sum{font-weight:700;margin:4px 2px 10px}.empty{text-align:center;color:#66716b;padding:24px}
+</style></head><body>
+<header><h1>Mi Feria Navideña 🎄</h1><small id="sub"></small></header>
+<main id="v"></main>
+<nav><button data-t="t" onclick="setTab('t')">🏪 Tiendas</button><button data-t="c" onclick="setTab('c')">⚖️ Comparar</button><button data-t="b" onclick="setTab('b')">💾 Respaldo</button></nav>
+<div id="sh" onclick="if(event.target===this)closeS()"></div>
+<script>
+const BUD=500000,CATS=['Adornos','Luces','Papel de regalo','Repostería','Otro'];
+let db,S=[],Q=[],F=[],tab='t',cur=null,tmp=[],cq='',dip=null;const U={};
+const $=id=>document.getElementById(id),g=id=>$(id).value;
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+const num=v=>{const n=parseFloat(String(v).replace(/\./g,'').replace(',','.'));return isNaN(n)?0:n};
+const P=n=>'$'+(n>=1000?Math.round(n):Math.round(n*10)/10).toLocaleString('es-CL');
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const url=f=>U[f.id]||(U[f.id]=URL.createObjectURL(f.blob));
+const p=r=>new Promise((a,b)=>{r.onsuccess=()=>a(r.result);r.onerror=()=>b(r.error)});
+const tx=(n,m='readonly')=>db.transaction(n,m).objectStore(n);
+const all=n=>p(tx(n).getAll()),put=(n,o)=>p(tx(n,'readwrite').put(o)),del=(n,id)=>p(tx(n,'readwrite').delete(id));
+const openDB=()=>new Promise((a,b)=>{const r=indexedDB.open('feria',1);r.onupgradeneeded=()=>['s','q','f'].forEach(n=>r.result.createObjectStore(n,{keyPath:'id'}));r.onsuccess=()=>a(r.result);r.onerror=()=>b(r.error)});
+async function load(){S=await all('s');Q=await all('q');F=await all('f')}
+const waLink=w=>{let d=String(w||'').replace(/\D/g,'');if(!d)return'';if(d.length===9)d='56'+d;return'https://wa.me/'+d};
+const envTxt=s=>s.env==='si'?'Sí'+(s.cenv?' · '+P(s.cenv):''):s.env==='no'?'No':'Sin confirmar';
+
+function setTab(t){tab=t;cur=null;render();scrollTo(0,0)}
+function render(){
+ $('sub').textContent='Presupuesto referencial '+P(BUD)+' · '+(navigator.onLine?'en línea':'sin conexión');
+ document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
+ $('v').innerHTML=tab==='t'?(cur?storeView():listView()):tab==='c'?cmpView():bakView();
+}
+function listView(){const vis=S.filter(s=>s.vis).length;
+ return `<div class=sum>${vis} de ${S.length} tiendas visitadas</div>`+(S.length?S.map(s=>{const n=Q.filter(q=>q.sid===s.id).length;
+ return `<div class="card row"><button class="chk ${s.vis?'on':''}" onclick="tog('${s.id}')">${s.vis?'✓':''}</button><div class=grow onclick="openS('${s.id}')"><b>${esc(s.nom)}</b><small>${esc(s.dir)||'Sin dirección'} · ${n} cotiz.</small></div><span onclick="openS('${s.id}')">›</span></div>`}).join(''):'<p class=empty>Aún no hay tiendas. Toca “+ Tienda” para agregar la primera.</p>')+`<button class=fab onclick="formS()">+ Tienda</button>`}
+async function tog(id){const s=S.find(x=>x.id===id);s.vis=!s.vis;await put('s',s);render()}
+function openS(id){cur=id;render();scrollTo(0,0)}
+function storeView(){const s=S.find(x=>x.id===cur),qs=Q.filter(q=>q.sid===cur),wa=waLink(s.wa);
+ return `<button class=back onclick="cur=null;render()">‹ Tiendas</button><div class=card><h2>${esc(s.nom)}</h2><small>${esc(s.dir)}</small><p>🚚 Envío a Calama: ${envTxt(s)}</p>${s.wa?`<small>WhatsApp: ${esc(s.wa)}</small>`:''}${wa?`<a class=btn href="${wa}" target=_blank rel=noopener>Abrir WhatsApp</a>`:''}<button class="btn g" onclick="formS('${s.id}')">Editar tienda</button></div>`
+ +(qs.length?qs.map(q=>{const ph=F.filter(f=>f.qid===q.id);
+ return `<div class=card onclick="formQ('${q.sid}','${q.id}')"><div class=row><div class=grow><b>${esc(q.nom)}</b><small>${esc(q.cat)} · ${P(q.precio)} por ${q.uni} un.</small>${q.may?`<small>Mayorista ${P(q.may)} c/u desde ${q.min||1} un.</small>`:''}${q.nota?`<small>📝 ${esc(q.nota)}</small>`:''}</div><div class=pr>${P(q.precio/q.uni)}<small>c/u</small></div></div>${ph.length?`<div class=th>${ph.map(f=>`<div><img src="${url(f)}" onclick="event.stopPropagation();big('${f.id}')"></div>`).join('')}</div>`:''}</div>`}).join(''):'<p class=empty>Sin cotizaciones todavía.</p>')
+ +`<button class=fab onclick="formQ('${s.id}')">+ Cotización</button>`}
+function sheet(t,h){$('sh').innerHTML=`<div class=box><div class=hd><h3>${t}</h3><button class=x onclick="closeS()">✕</button></div>${h}</div>`;$('sh').classList.add('on')}
+function closeS(){$('sh').classList.remove('on');$('sh').innerHTML=''}
+function big(id){const f=F.find(x=>x.id===id)||tmp.find(x=>x.id===id);sheet('Foto',`<img style="width:100%;border-radius:12px" src="${url(f)}">`)}
+function formS(id){const s=id?S.find(x=>x.id===id):{env:'?'};
+ sheet(id?'Editar tienda':'Nueva tienda',`<label>Nombre<input id=sn value="${esc(s.nom)}"></label><label>Dirección o local<input id=sd value="${esc(s.dir)}"></label><label>¿Envía a Calama?<select id=se><option value="?">Sin confirmar</option><option value=si>Sí</option><option value=no>No</option></select></label><div class=two><label>Costo de envío $<input id=sc inputmode=numeric value="${esc(s.cenv||'')}"></label><label>WhatsApp<input id=sw type=tel value="${esc(s.wa)}"></label></div><button class=btn onclick="saveS('${id||''}')">Guardar</button>${id?`<button class="btn r" onclick="delS('${id}')">Borrar tienda</button>`:''}`);
+ $('se').value=s.env||'?'}
+async function saveS(id){const nom=g('sn').trim();if(!nom){alert('Escribe el nombre de la tienda');return}
+ let s=id?S.find(x=>x.id===id):{id:uid(),vis:false};if(!id)S.push(s);
+ Object.assign(s,{nom,dir:g('sd').trim(),env:g('se'),cenv:num(g('sc')),wa:g('sw').trim()});await put('s',s);closeS();render()}
+async function delS(id){if(!confirm('¿Borrar la tienda y todas sus cotizaciones y fotos?'))return;
+ for(const q of Q.filter(q=>q.sid===id))await rmQ(q.id);await del('s',id);S=S.filter(s=>s.id!==id);cur=null;closeS();render()}
+function formQ(sid,id){const q=id?Q.find(x=>x.id===id):{cat:CATS[0],uni:1};tmp=id?F.filter(f=>f.qid===id).map(f=>({...f})):[];
+ sheet(id?'Editar cotización':'Nueva cotización',`<div oninput="calc()"><label>Producto<input id=qn list=pl autocomplete=off value="${esc(q.nom)}"></label><datalist id=pl>${[...new Set(Q.map(x=>x.nom))].map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
+ <label>Categoría<select id=qc>${CATS.map(c=>`<option ${c===q.cat?'selected':''}>${c}</option>`).join('')}</select></label>
+ <div class=two><label>Precio total $<input id=qp inputmode=numeric value="${esc(q.precio||'')}"></label><label>Unidades<input id=qu inputmode=numeric value="${esc(q.uni||1)}"></label></div>
+ <div class=unit id=ux></div>
+ <div class=two><label>Mayorista $ c/u<input id=qm inputmode=numeric value="${esc(q.may||'')}"></label><label>Compra mínima (un.)<input id=qk inputmode=numeric value="${esc(q.min||'')}"></label></div>
+ <label>Notas<textarea id=qt rows=2>${esc(q.nota)}</textarea></label></div>
+ <div id=ph class=th></div><label class="btn g" style="margin-bottom:8px">📷 Agregar fotos<input type=file accept="image/*" multiple hidden onchange="addPh(this)"></label>
+ <button class=btn onclick="saveQ('${sid}','${id||''}')">Guardar</button>${id?`<button class="btn r" onclick="delQ('${id}')">Borrar cotización</button>`:''}`);
+ showPh();calc()}
+function calc(){const p=num(g('qp')),u=num(g('qu'))||1,m=num(g('qm')),k=num(g('qk'))||1;
+ $('ux').innerHTML=(p?`Costo por unidad: ${P(p/u)}`:'Costo por unidad: —')+(m?`<br>Por mayor: ${P(m)} c/u desde ${k} un. (${P(m*k)})`:'')}
+function showPh(){$('ph').innerHTML=tmp.map((t,i)=>`<div><img src="${url(t)}" onclick="big('${t.id}')"><button class=xb onclick="tmp.splice(${i},1);showPh()">✕</button></div>`).join('')}
+async function comp(file){const bm=await createImageBitmap(file),k=Math.min(1,1280/Math.max(bm.width,bm.height)),c=document.createElement('canvas');c.width=Math.round(bm.width*k);c.height=Math.round(bm.height*k);c.getContext('2d').drawImage(bm,0,0,c.width,c.height);return new Promise(r=>c.toBlob(r,'image/jpeg',.72))}
+async function addPh(inp){for(const f of inp.files)tmp.push({id:uid(),blob:await comp(f),nuevo:1});inp.value='';showPh()}
+async function saveQ(sid,id){const nom=g('qn').trim(),precio=num(g('qp'));if(!nom||!precio){alert('Faltan el producto o el precio total');return}
+ const q={id:id||uid(),sid,nom,cat:g('qc'),precio,uni:num(g('qu'))||1,may:num(g('qm')),min:num(g('qk')),nota:g('qt').trim()};
+ await put('q',q);Q=Q.filter(x=>x.id!==q.id);Q.push(q);
+ const keep=new Set(tmp.map(t=>t.id));
+ for(const f of F.filter(f=>f.qid===q.id&&!keep.has(f.id)))await del('f',f.id);
+ F=F.filter(f=>f.qid!==q.id||keep.has(f.id));
+ for(const t of tmp)if(t.nuevo){const f={id:t.id,qid:q.id,blob:t.blob};await put('f',f);F.push(f)}
+ closeS();render()}
+async function rmQ(id){for(const f of F.filter(f=>f.qid===id))await del('f',f.id);F=F.filter(f=>f.qid!==id);await del('q',id);Q=Q.filter(q=>q.id!==id)}
+async function delQ(id){if(!confirm('¿Borrar esta cotización y sus fotos?'))return;await rmQ(id);closeS();render()}
+
+function eff(q,n){const u=q.precio/q.uni,w=q.may>0?q.may:0,m=q.min||1;
+ if(w&&w<u&&(!n||n>=m))return{u:w,w:1};return{u}}
+function cmpView(){return `<div class=card><label>¿Cuántas unidades pensarías comprar? (opcional)<input inputmode=numeric value="${esc(cq)}" oninput="cq=this.value;$('cl').innerHTML=cmpList()"></label><small>Vacío = mejor precio posible, con su mínimo.</small></div><div id=cl>${cmpList()}</div>`}
+function cmpList(){if(!Q.length)return'<p class=empty>Agrega cotizaciones para compararlas aquí.</p>';
+ const n=num(cq),gr={};Q.forEach(q=>(gr[norm(q.nom)]=gr[norm(q.nom)]||[]).push(q));
+ return Object.keys(gr).sort().map(k=>{const rows=gr[k].map(q=>({q,e:eff(q,n),s:S.find(s=>s.id===q.sid)||{nom:'?'}})).sort((a,b)=>a.e.u-b.e.u);
+ return `<div class=card><h3>${esc(rows[0].q.nom)}</h3><small>${rows.length>1?rows.length+' tiendas':'Solo 1 tienda'}</small>`+rows.map((r,i)=>{const q=r.q,b=i===0&&rows.length>1;
+ let d=r.e.w?`Mayorista desde ${q.min||1} un. (${P(q.may*(q.min||1))})`:'Precio normal';
+ if(!r.e.w&&q.may&&q.may<q.precio/q.uni)d+=` · mayorista ${P(q.may)} desde ${q.min||1} un.`;
+ if(n)d+=` · total ${P(r.e.u*n)}`;d+=` · envío Calama: ${envTxt(r.s)}`;
+ return `<div class="cr ${b?'best':''}"><div><b>${b?'🏆 ':''}${esc(r.s.nom)}</b><small>${d}</small></div><div class=pr>${P(r.e.u)}<small>c/u</small></div></div>`}).join('')+'</div>'}).join('')}
+
+function bakView(){return `<div class=card><b>Presupuesto de referencia: ${P(BUD)}</b><small>Solo como guía. No se descuenta nada porque aún no estás comprando.</small></div>
+ <div class=card><b>${S.length} tiendas · ${Q.length} cotizaciones · ${F.length} fotos</b><small>Todo se guarda en este teléfono, en el navegador de la app.</small></div>
+ <button class=btn onclick="expCsv()">Exportar a CSV (Excel)</button><button class=btn onclick="expBak()">Exportar respaldo completo</button>
+ <label class="btn g">Importar respaldo<input type=file accept=".json,application/json" hidden onchange="imp(this)"></label>${dip?'<button class=btn onclick="inst()">Instalar app</button>':''}`}
+function dl(b,n){const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),3e4)}
+const hoy=()=>new Date().toISOString().slice(0,10);
+function expCsv(){const H=['Tienda','Dirección','Envía a Calama','Costo envío','WhatsApp','Producto','Categoría','Precio total','Unidades','Costo por unidad','Precio mayorista c/u','Compra mínima','Notas','Fotos'];
+ const d=x=>String(x).replace('.',',');
+ const rows=Q.map(q=>{const s=S.find(s=>s.id===q.sid)||{};return[s.nom,s.dir,envTxt({env:s.env}),s.cenv||'',s.wa,q.nom,q.cat,q.precio,q.uni,d(Math.round(q.precio/q.uni*100)/100),q.may||'',q.min||'',q.nota,F.filter(f=>f.qid===q.id).length]});
+ dl(new Blob(['\ufeff'+[H,...rows].map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(';')).join('\r\n')],{type:'text/csv'}),'cotizaciones-'+hoy()+'.csv')}
+const b64=b=>new Promise(r=>{const x=new FileReader();x.onload=()=>r(x.result);x.readAsDataURL(b)});
+async function expBak(){const fotos=[];for(const f of F)fotos.push({id:f.id,qid:f.qid,data:await b64(f.blob)});
+ dl(new Blob([JSON.stringify({app:'mi-feria',v:1,fecha:hoy(),tiendas:S,cotizaciones:Q,fotos})],{type:'application/json'}),'respaldo-feria-'+hoy()+'.json')}
+async function imp(inp){const f=inp.files[0];if(!f)return;
+ try{const d=JSON.parse(await f.text());if(d.app!=='mi-feria'||!Array.isArray(d.tiendas))throw 0;
+ if(!confirm(`Esto reemplaza todo lo actual por ${d.tiendas.length} tiendas y ${d.cotizaciones.length} cotizaciones. ¿Continuar?`)){inp.value='';return}
+ for(const n of['s','q','f'])await p(tx(n,'readwrite').clear());
+ for(const s of d.tiendas)await put('s',s);for(const q of d.cotizaciones)await put('q',q);
+ for(const x of d.fotos||[])await put('f',{id:x.id,qid:x.qid,blob:await(await fetch(x.data)).blob()});
+ await load();cur=null;render();alert('Respaldo importado ✓')}catch(e){alert('Ese archivo no es un respaldo válido de Mi Feria')}inp.value=''}
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();dip=e;if(tab==='b')render()});
+function inst(){dip.prompt();dip=null;render()}
+addEventListener('online',render);addEventListener('offline',render);
+(async()=>{try{db=await openDB();await load()}catch(e){alert('No se pudo abrir el almacenamiento: '+e)}
+ navigator.storage?.persist?.();render();
+ if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{})})();
+</script></body></html>
